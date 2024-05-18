@@ -6,6 +6,8 @@ __pycache__/
 # C extensions
 *.so
 
+.idea
+
 # Distribution / packaging
 .Python
 build/
@@ -161,3 +163,5 @@ cython_debug/
 
 *.trec
 *.qrels
+*.qrel
+*.tsv

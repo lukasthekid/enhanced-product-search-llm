@@ -166,3 +166,5 @@ cython_debug/
 *.qrels
 *.qrel
 *.tsv
+*.json
+*.jsonl

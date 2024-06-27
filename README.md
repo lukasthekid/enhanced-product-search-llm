@@ -32,3 +32,10 @@ top10 ndgc on 10 queries
 Evaluate BM25 Model...
 0.9420475565916557
 Took 13.96976113319397 seconds
+
+small data model training 3 epochs took
+finished after 62090.06482172012 seconds
+
+Hyperparameter Tuning Query Generator
+Best Scores: num_beams:5, top_p:0.95, temperature:0.8
+took 242043.24642181396 seconds

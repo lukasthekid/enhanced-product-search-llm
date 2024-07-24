@@ -1,13 +1,14 @@
 import itertools
 import json
 import time
-from tqdm import tqdm
+
 import numpy as np
 import pandas as pd
 import psutil
 import torch
 import transformers
 from datasets import Dataset
+from tqdm import tqdm
 from transformers import BartTokenizer, BartForConditionalGeneration, Seq2SeqTrainingArguments, Seq2SeqTrainer, \
     TrainerCallback
 
@@ -16,10 +17,10 @@ from application.service.utils import RougeScore, average_rouge_scores, Semantic
 
 
 class BartQueryGenerator:
-    def __init__(self, data: pd.DataFrame = None, max_input_length=1024, max_output_length=64):
+    def __init__(self, data: pd.DataFrame = None, max_input_length=1024, max_output_length=64, device: str = None):
         self.model_name = 'facebook/bart-large'
         self.tokenizer = BartTokenizer.from_pretrained(self.model_name)
-        self.device = self._get_device()
+        self.device = torch.device(device) if device is not None else self._get_device()
         self.model = BartForConditionalGeneration.from_pretrained(self.model_name).to(self.device)
 
         print(f'Model is on {self.device.type}')
@@ -200,58 +201,6 @@ class BartQueryGenerator:
         self.model = BartForConditionalGeneration.from_pretrained(load_directory).to(self.device)
         self.tokenizer = BartTokenizer.from_pretrained(load_directory)
 
-
-class Llama3QueryGenerator:
-
-    def __init__(self, data, max_input_length=1024, max_output_length=512):
-        # Load pre-trained BART model and tokenizer
-        config = json.load("../../config.json")
-        HF_TOKEN = config['HF_TOKEN_LLAMA3']
-        model_id = "meta-llama/Meta-Llama-3-8B"
-        self.max_output_length = max_output_length
-        self.pipeline = transformers.pipeline(
-            "text-generation",
-            model=model_id,
-            model_kwargs={
-                "torch_dtype": torch.float16,
-                "quantization_config": {"load_in_4bit": True},
-                "low_cpu_mem_usage": True,
-            },
-        )
-
-    def generate_query(self, description):
-        self.model.eval()
-        # Move model to CPU
-        self.model.to('cpu')
-        content = "Generate me a suitable search query for the following product: " + description
-
-        messages = [
-            {"role": "system",
-             "content": "You are a reverse search engine that gives search queries for product descriptions"},
-            {"role": "user", "content": content},
-        ]
-
-        prompt = self.pipeline.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
-        )
-
-        terminators = [
-            self.pipeline.tokenizer.eos_token_id,
-            self.pipeline.tokenizer.convert_tokens_to_ids("<|eot_id|>")
-        ]
-
-        outputs = self.pipeline(
-            prompt,
-            max_new_tokens=self.max_output_length,
-            eos_token_id=terminators,
-            do_sample=True,
-            temperature=0.6,
-            top_p=0.9,
-        )
-
-        return outputs
 
 
 class ResourceTrackerCallback(TrainerCallback):

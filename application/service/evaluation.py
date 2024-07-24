@@ -93,3 +93,4 @@ def average_cosine_distance(queries, helper: SemanticHelper):
         return 0.0
 
     return upper_tri_distances.mean()
+

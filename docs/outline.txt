@@ -1,0 +1,122 @@
+Creating a structured outline for your master thesis on enhancing product search with synthetic queries involves several key sections. Below is a detailed outline that you can follow:
+
+### Title
+**Enhancing Product Search with Synthetic Queries: A Comparative Study of BM25 and Two-Tower Retriever Models**
+
+### Abstract
+- Brief summary of the problem
+- Overview of methods used (BM25, Two-Tower Retriever, Synthetic Queries)
+- Key findings and contributions
+
+### Table of Contents
+1. **Introduction**
+    - Background and motivation
+    - Problem statement
+    - Objectives
+    - Contributions of the thesis
+    - Structure of the thesis
+
+2. **Literature Review**
+    - Overview of product search systems
+    - Traditional methods (BM25, etc.)
+    - Modern retrieval models (Two-Tower, etc.)
+    - Query generation techniques
+    - Data augmentation in machine learning
+    - Challenges in product search
+
+3. **Methodology**
+    - Baseline Model: BM25
+        - Description
+        - Implementation details
+        - Hyperparameter tuning
+    - Two-Tower Retriever Model
+        - Architecture overview
+        - Training process
+        - Hyperparameter tuning
+    - Synthetic Query Generation
+        - Fine-tuning large BART model
+        - Dataset creation
+        - Evaluation of synthetic queries
+
+4. **Experimental Setup**
+    - Description of the datasets
+    - Data preprocessing steps
+    - Training environment
+    - Evaluation metrics
+
+5. **Results and Analysis**
+    - BM25 Results
+        - Performance metrics
+        - Analysis of results
+    - Two-Tower Retriever Results
+        - Performance metrics
+        - Analysis of results
+    - Comparative Analysis
+        - Comparison between BM25 and Two-Tower Retriever
+        - Impact of synthetic queries on performance
+    - Hyperparameter Tuning Results
+        - Impact on performance
+        - Best performing configurations
+
+6. **Discussion**
+    - Interpretation of results
+    - Advantages and limitations of each approach
+    - Impact of synthetic queries on retrieval models
+    - Implications for real-world applications
+
+7. **Conclusion**
+    - Summary of findings
+    - Contributions to the field
+    - Future work and open questions
+
+8. **References**
+    - List of all cited works
+
+9. **Appendices**
+    - Additional results
+    - Detailed configurations and settings
+    - Code snippets
+
+### Detailed Sections
+
+#### 1. Introduction
+- **Background and Motivation**: Discuss the importance of effective product search in e-commerce and the challenge of data shortage.
+- **Problem Statement**: Clearly state the problem you are addressing.
+- **Objectives**: Define the goals of your research.
+- **Contributions**: Highlight the key contributions of your thesis.
+- **Structure**: Briefly describe the structure of your thesis.
+
+#### 2. Literature Review
+- Provide a comprehensive review of existing literature related to product search, highlighting the evolution from traditional to modern techniques.
+- Discuss query generation methods and the role of synthetic data in enhancing machine learning models.
+
+#### 3. Methodology
+- **BM25**: Explain the BM25 algorithm, implementation details, and the process of hyperparameter tuning.
+- **Two-Tower Retriever Model**: Describe the architecture, training process, and hyperparameter tuning of the Two-Tower model.
+- **Synthetic Query Generation**: Detail the process of fine-tuning the BART model, generating synthetic queries, and evaluating their quality.
+
+#### 4. Experimental Setup
+- Describe the datasets used, including any preprocessing steps.
+- Outline the training environment and the evaluation metrics used to assess model performance.
+
+#### 5. Results and Analysis
+- Present the results for BM25 and the Two-Tower Retriever, including performance metrics and detailed analysis.
+- Compare the performance of both models and discuss the impact of synthetic queries.
+- Include results from hyperparameter tuning and discuss their effects on model performance.
+
+#### 6. Discussion
+- Interpret the results in the context of your research objectives.
+- Discuss the advantages and limitations of each approach and the practical implications of your findings.
+
+#### 7. Conclusion
+- Summarize the key findings of your research.
+- Highlight your contributions to the field of product search.
+- Suggest directions for future research and address any open questions.
+
+#### 8. References
+- Ensure all sources cited in the thesis are properly listed and formatted.
+
+#### 9. Appendices
+- Include any additional information, such as detailed experimental results, configurations, and code snippets, that supports your research but is too detailed for the main sections.
+
+By following this structure, you can ensure that your thesis is comprehensive, logically organized, and addresses all key aspects of your research project.

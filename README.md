@@ -24,18 +24,24 @@ Preprocess the Product Collection
 Preprocessing finished in 1103.0511558055878 seconds 
 
 Start the Hyperparamter Tuning
-Best Score: 0.9420475565916557
-Best Parameters: {'b': 0.6, 'epsilon': 0.1, 'k1': 1.5}
-Took 1303.495684146881 seconds 
+Best Score: 0.7686189999999999
+Best Parameters: {'b': 0.9, 'epsilon': 0.1, 'k1': 1.2}
+Took 2005.11181306839 seconds
+Validation Set Score
+NDCG, Precision and Recall Scores: (0.7686189999999999, 0.7799999999999999, 0.7795815295815296)
 
-top10 ndgc on 10 queries
-Evaluate BM25 Model...
-0.9420475565916557
-Took 13.96976113319397 seconds
+Test Baseline on Test Data
+Testing the model with (186, 2) queries
+NDCG score: 0.6637909139784945
+Precision@10: 0.5806451612903226
+Recall@10: 0.2577583666969151
 
+Query Generator
 small data model training 3 epochs took
 finished after 62090.06482172012 seconds
 
 Hyperparameter Tuning Query Generator
 Best Scores: num_beams:5, top_p:0.95, temperature:0.8
 took 242043.24642181396 seconds
+
+Testing Two Tower Model on synthetic data

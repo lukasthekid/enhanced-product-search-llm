@@ -1,10 +1,11 @@
 import evaluate
+import math
 import numpy as np
 import pandas as pd
-from sklearn.metrics import ndcg_score
 from sklearn.metrics.pairwise import cosine_similarity, cosine_distances
 
 from .model.bm25 import BM25
+from .model.two_tower import BiEncoderModel, get_top_n_index
 from .utils import TextPreprocessor, TopKHelper, SemanticHelper, RougeScore
 
 preprocessor = TextPreprocessor()
@@ -12,37 +13,45 @@ helper = TopKHelper()
 
 
 # Function to evaluate BM25 model
-def evaluate_bm25(query_df: pd.DataFrame, qrel_df: pd.DataFrame, bm25: BM25, collection: pd.DataFrame, k=10):
-    y_preds = []
-    y_trues = []
+def evaluate_bm25(query_df: pd.DataFrame, qrel_df: pd.DataFrame, bm25: BM25, collection: pd.DataFrame, k=10) -> (
+        float, float, float):
+    ndcg = []
+    precision = []
+    recall = []
 
     for _, row in query_df.iterrows():
         if row.text is np.nan:
             continue
-        y_true = helper.produce_ground_truth({'id': row.qid, 'text': row.text}, qrel_df)[:k]
-
+        y_true = helper.produce_ground_truth(int(row.qid), qrel_df, collection)
         # Predict relevance scores
         query_tokens = preprocessor.preprocess(row.text)
+        topk_df = bm25.get_top_n(query_tokens, collection, n=0)
+        y_pred = helper.produce_y_pred(int(row.qid), topk_df, qrel_df)
+        ndcg.append(normalized_discounted_cumulative_gain(y_pred))
+        precision.append(precision_at_k(y_pred, y_true, k))
+        recall.append(recall_at_k(y_pred, y_true, k))
 
-        y_pred = bm25.get_scores(query_tokens)
-        collection['scores'] = y_pred
-        recommendations = collection.sort_values(by='scores', ascending=False).head(k)
-        y_pred = helper.produce_y_pred(int(row.qid), recommendations, qrel_df)
+    return np.mean(ndcg), np.mean(precision), np.mean(recall)
 
-        # Pad y_true with zeros to ensure all lists have the same length
-        padded_y_true = np.pad(y_true, (0, k - len(y_true)), 'constant', constant_values=0)
+def evaluate_two_tower(query_df: pd.DataFrame, qrel_df: pd.DataFrame, model: BiEncoderModel, index, collection: pd.DataFrame, k=10, device='cpu') -> (
+        float, float, float):
+    ndcg = []
+    precision = []
+    recall = []
 
-        y_preds.append(y_pred)
-        y_trues.append(padded_y_true)
+    for _, row in query_df.iterrows():
+        if row.text is np.nan:
+            continue
+        y_true = helper.produce_ground_truth(int(row.qid), qrel_df, collection)
+        # Predict relevance scores
+        query_embedding = model.encode_query(str(row.text), device=device).cpu().detach().numpy()
+        topk_df = get_top_n_index(index, query_embedding, collection, k=collection.shape[0])
+        y_pred = helper.produce_y_pred(int(row.qid), topk_df, qrel_df, ascending=True)
+        ndcg.append(normalized_discounted_cumulative_gain(y_pred))
+        precision.append(precision_at_k(y_pred, y_true, k))
+        recall.append(recall_at_k(y_pred, y_true, k))
 
-    # Convert lists to numpy arrays
-    y_preds = np.array(y_preds)
-    y_trues = np.array(y_trues)
-
-    # Calculate NDCG score
-    ndcg = ndcg_score(y_trues, y_preds)
-
-    return ndcg
+    return np.mean(ndcg), np.mean(precision), np.mean(recall)
 
 
 # Evaluate Query Generator
@@ -94,3 +103,38 @@ def average_cosine_distance(queries, helper: SemanticHelper):
 
     return upper_tri_distances.mean()
 
+
+def normalized_discounted_cumulative_gain(temp_set, p=5):
+    dc_gain = 0
+    idc_gain = 0
+    for idx, value in enumerate(temp_set.values()):
+        pos = idx + 1
+        dc_gain += value / math.log2(pos + 1)
+        if pos == p:
+            break
+    for idx, value in enumerate(sorted(temp_set.values(), reverse=True)):
+        pos = idx + 1
+        idc_gain += value / math.log2(pos + 1)
+        if pos == p:
+            break
+    return round(dc_gain / idc_gain, 5)
+
+
+def precision_at_k(predicted_dict, ideal_dict, k):
+    # Get the top K docids from the predicted results
+    top_k_pred = list(predicted_dict.keys())[:k]
+    # Count the number of relevant documents in the top K predicted results
+    relevant_in_pred = sum([1 for docid in top_k_pred if ideal_dict.get(docid, 0) > 0])
+    # Precision is the number of relevant documents divided by K
+    return relevant_in_pred / k
+
+
+def recall_at_k(predicted_dict, ideal_dict, k):
+    # Get the top K docids from the predicted results
+    top_k_pred = list(predicted_dict.keys())[:k]
+    # Count the total number of relevant documents in the ideal results
+    total_relevant = sum([1 for score in ideal_dict.values() if score > 0])
+    # Count the number of relevant documents in the top K predicted results
+    relevant_in_pred = sum([1 for docid in top_k_pred if ideal_dict.get(docid, 0) > 0])
+    # Recall is the number of relevant documents in top K divided by the total number of relevant documents
+    return relevant_in_pred / total_relevant if total_relevant > 0 else 0

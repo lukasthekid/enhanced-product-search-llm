@@ -1,10 +1,13 @@
+import pickle
+from multiprocessing import Pool, cpu_count
+
 import math
 import numpy as np
-from multiprocessing import Pool, cpu_count
-import pickle
+import pandas as pd
+
 
 class BM25:
-    def __init__(self, corpus, tokenizer=None):
+    def __init__(self, corpus: [[str]], tokenizer=None):
         self.tokenizer = tokenizer
         self.corpus_size = 0
         self.avgdl = 0
@@ -57,10 +60,14 @@ class BM25:
     def get_scores(self, query):
         raise NotImplementedError()
 
-    def get_top_n(self, query, documents, n=5):
+    def get_top_n(self, query: [str], documents: pd.DataFrame, n=5) -> pd.DataFrame:
         scores = self.get_scores(query)
-        top_n_indices = np.argsort(scores)[::-1][:n]
-        return [documents[i] for i in top_n_indices]
+        df = documents.copy()
+        df['score'] = scores
+        df.sort_values(by='score', ascending=False, inplace=True)
+        if n > 0:
+            return df.head(n)
+        return df
 
     def save_model(self, filepath):
         model_data = {
@@ -76,13 +83,29 @@ class BM25:
         with open(filepath, 'wb') as f:
             pickle.dump(model_data, f)
 
+    @classmethod
+    def load_model(cls, filepath):
+        with open(filepath, 'rb') as f:
+            model_data = pickle.load(f)
+        bm25 = cls.__new__(cls)
+        bm25.corpus_size = model_data['corpus_size']
+        bm25.avgdl = model_data['avgdl']
+        bm25.doc_freqs = model_data['doc_freqs']
+        bm25.idf = model_data['idf']
+        bm25.doc_len = model_data['doc_len']
+        bm25.k1 = model_data['k1']
+        bm25.b = model_data['b']
+        bm25.epsilon = model_data['epsilon']
+        return bm25
+
 
 class BM25Okapi(BM25):
-    def __init__(self, corpus, tokenizer=None, k1=1.5, b=0.75, epsilon=0.25):
-        self.k1 = k1
-        self.b = b
-        self.epsilon = epsilon
-        super().__init__(corpus, tokenizer)
+    def __init__(self, corpus=None, tokenizer=None, k1=1.5, b=0.75, epsilon=0.25):
+        if corpus:
+            self.k1 = k1
+            self.b = b
+            self.epsilon = epsilon
+            super().__init__(corpus, tokenizer)
 
     def _calc_idf(self, nd):
         idf_sum = 0

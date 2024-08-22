@@ -71,13 +71,13 @@ class BartQueryGenerator:
         self.train_dataset = train_test_split['train']
         self.val_dataset = train_test_split['test']
 
-    def train(self, num_train_epochs=3, learning_rate=2e-5):
+    def train(self, num_train_epochs=3, learning_rate=2e-5, output_dir='./results/bart'):
         dataset = self._load_data()
         tokenized_datasets = self._tokenize_data(dataset)
         self._split_data(tokenized_datasets)
 
         training_args = Seq2SeqTrainingArguments(
-            output_dir='./results/bart',
+            output_dir=output_dir,
             eval_strategy='epoch',
             save_strategy='epoch',
             learning_rate=learning_rate,

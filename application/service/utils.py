@@ -22,6 +22,7 @@ def read_jsonl_file(filepath):
             data.append(obj)
     return data
 
+
 class RougeScore:
     def __init__(self, avg_rouge1, avg_rouge2, avg_rougeL, avg_rougeLsum):
         self.avg_rouge1 = avg_rouge1
@@ -86,25 +87,24 @@ class TextPreprocessor:
             return tokens
         except Exception:
             print(text, Exception)
+            return np.nan
 
 
 class TopKHelper:
 
-    def produce_ground_truth(self, query: {int, str}, qrel: pd.DataFrame) -> [int]:
-        df = qrel[qrel['qid'] == query['id']]
+    def produce_ground_truth(self, qid: int, qrel: pd.DataFrame, collection: pd.DataFrame) -> [int]:
+        df = qrel[(qrel['qid'] == qid) & (qrel['docid'].isin(collection['id'].values))]
         df = df.sort_values(by='relevance_score', ascending=False)
-        return df['relevance_score'].values
+        return df.set_index('docid')['relevance_score'].to_dict()
 
     # Assuming qrel is a DataFrame with columns ['qid', 'docid', 'relevance_score']
     # recs is a DataFrame with the recommended documents, assuming it has at least a column 'id'
-    def produce_y_pred(self, qid: int, recs: pd.DataFrame, qrel: pd.DataFrame) -> [int]:
-        # Create a dictionary for quick lookup of relevance scores
-        qrel_dict = qrel[qrel['qid'] == qid].set_index('docid')['relevance_score'].to_dict()
-
-        # Generate the predictions list using the dictionary for quick lookups
-        r = [qrel_dict.get(doc_id, 0) for doc_id in recs['id']]
-
-        return r
+    def produce_y_pred(self, qid: int, topk: pd.DataFrame, qrel: pd.DataFrame, ascending=False) -> dict:
+        df = qrel[(qrel['qid'] == qid) & (qrel['docid'].isin(topk['id'].values))]
+        df = df.copy()  # Create a copy to avoid the SettingWithCopyWarning
+        df.loc[:, 'rank_score'] = topk.set_index('id').loc[df['docid'], 'score'].values
+        df.sort_values(by='rank_score', ascending=ascending, inplace=True)
+        return df.set_index('docid')['relevance_score'].to_dict()
 
 
 class SemanticHelper:
@@ -113,5 +113,3 @@ class SemanticHelper:
 
     def get_embedding(self, text):
         return self.model.encode(text, convert_to_tensor=False)
-
-

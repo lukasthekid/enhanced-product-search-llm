@@ -1,45 +1,34 @@
 import faiss
 import numpy as np
 import pandas as pd
-import torch
-import torch.nn.functional as F  # Ensure this is imported
-from transformers import RobertaTokenizer, RobertaModel
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.layers import Input, Dense, Dot, Lambda, BatchNormalization, Dropout, Activation
+from tensorflow.keras.models import Model
 
 
-class BiEncoderModel(torch.nn.Module):
-    def __init__(self, encoder_model):
-        super(BiEncoderModel, self).__init__()
-        self.query_encoder = RobertaModel.from_pretrained(encoder_model)
-        self.product_encoder = RobertaModel.from_pretrained(encoder_model)
+def build_two_tower_model() -> tf.keras.models.Model:
+    query_input = Input(shape=(1024,), name='query_input')
+    product_input = Input(shape=(1024,), name='product_input')
 
-    def forward(self, query_input, product_input):
-        query_output = self.query_encoder(**query_input).last_hidden_state
-        product_output = self.product_encoder(**product_input).last_hidden_state
+    # Step 2: Build the Tower Model (Dense Layers for Query and Product Encoders)
+    def build_tower(input_layer, prefix=''):
+        x = Dense(512, activation='relu', name=prefix + '_first_embedding')(input_layer)
+        x = Dense(256, activation='relu', name=prefix + '_second_embedding')(x)
+        x = Dense(128, activation='relu', name=prefix + '_third_embedding')(x)
+        x = Dense(64, activation='relu', name=prefix + '_last_embedding')(x)
+        x = Lambda(lambda x: tf.keras.backend.l2_normalize(x, axis=-1), name=prefix + '_normalizing',
+                   output_shape=(64,))(x)
+        return x
 
-        # Mean pooling over all token embeddings
-        query_embedding = query_output[:, 0, :]
-        product_embedding = product_output[:, 0, :]
+    # Apply the tower model to both inputs
+    query_tower = build_tower(query_input, prefix='query')
+    product_tower = build_tower(product_input, prefix='product')
 
-        return F.normalize(query_embedding, p=2, dim=1), F.normalize(product_embedding, p=2, dim=1)
+    # Lambda layer to compute similarity
+    similarity = Dot(axes=1, normalize=True, name='cosine_similarity')([query_tower, product_tower])
 
-    def encode_query(self, query: str, device):
-        tokenizer = RobertaTokenizer.from_pretrained("roberta-base")
-        query_encoding = tokenizer(query, return_tensors='pt', max_length=256, padding='max_length',
-                                   truncation=True)
-
-        # Move input to the same device as the model
-        query_encoding = {key: val.to(device) for key, val in query_encoding.items()}
-        query_output = self.query_encoder(**query_encoding).last_hidden_state
-        query_embedding = query_output[:, 0, :]
-        return F.normalize(query_embedding, p=2, dim=1)
-
-
-def load_model(model_weights_path, model_name, device):
-    model = BiEncoderModel(model_name)
-    model.load_state_dict(torch.load(model_weights_path, map_location=device))
-    model.to(device)
-    model.eval()  # Set the model to evaluation mode
-    return model
+    return Model(inputs=[query_input, product_input], outputs=similarity)
 
 
 def load_faiss_index(index_file):
@@ -50,7 +39,7 @@ def get_top_n_index(index: faiss.IndexFlatL2, query_embedding: np.ndarray, docum
     # Perform the search
     D, I = index.search(query_embedding, k)  # D is distances, I is indices
     # Get the rows from documents corresponding to the indices
-    top_documents = documents.iloc[I[0]].copy()  # Make an explicit copy of the DataFrame slice
+    top_documents = documents.iloc[I[0]].reset_index(drop=True)
     # Assign the score column using .loc to avoid the SettingWithCopyWarning
     top_documents.loc[:, 'score'] = D[0]
     return top_documents

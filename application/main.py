@@ -7,7 +7,6 @@ import pandas as pd
 from sklearn.model_selection import ParameterGrid, train_test_split
 
 from application.service.model.query_generator import BartQueryGenerator
-from application.service.syntheticdata.creator import DatasetCreator
 from service.evaluation import evaluate_bm25
 from service.model.bm25 import BM25Okapi
 from service.utils import TextPreprocessor, SemanticHelper
@@ -113,20 +112,6 @@ def build_query_generator(train=False, evaluate=True):
         best_score = generator.hyperparameter_tuning(tuning_ids, data, semanticHelper=SemanticHelper())
         print(f'Best Scores: num_beams:{best_score[0]}, top_p:{best_score[1]}, temperature:{best_score[2]}')
         print(f'took {time.time() - start} seconds')
-
-
-def build_synthetic_dataset(model_path='../models/fine-tuned-bart', save_path='../data/synthetic_query_product.tsv'):
-    collection = pd.read_csv('../data/train/p_collection_small.tsv', sep='\t')
-    product_texts = collection['product_text'].values.tolist()
-    print(f'Generating queries for {len(product_texts)} products')
-    print(f'{multiprocessing.cpu_count()} Cores available')
-    start = time.time()
-    creator = DatasetCreator(model_path, product_texts=product_texts, max_workers=multiprocessing.cpu_count())
-    df = creator.create_data_frame()
-    print(f'Generating {df.shape[0] // 2} Queries took {time.time() - start} seconds')
-
-    # df = pd.merge(df, collection[['id', 'product_text']])
-    # df.to_csv(save_path, sep='\t', index=False)
 
 
 if __name__ == "__main__":

@@ -2,10 +2,13 @@ import evaluate
 import math
 import numpy as np
 import pandas as pd
+import torch
+import torch.nn.functional as F
+from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity, cosine_distances
 
 from .model.bm25 import BM25
-from .model.two_tower import BiEncoderModel, get_top_n_index
+from .model.two_tower import get_top_n_index
 from .utils import TextPreprocessor, TopKHelper, SemanticHelper, RougeScore
 
 preprocessor = TextPreprocessor()
@@ -33,18 +36,61 @@ def evaluate_bm25(query_df: pd.DataFrame, qrel_df: pd.DataFrame, bm25: BM25, col
 
     return np.mean(ndcg), np.mean(precision), np.mean(recall)
 
-def evaluate_two_tower(query_df: pd.DataFrame, qrel_df: pd.DataFrame, model: BiEncoderModel, index, collection: pd.DataFrame, k=10, device='cpu') -> (
+
+def evaluate_two_tower(query_df: pd.DataFrame, qrel_df: pd.DataFrame, model, index,
+                       collection: pd.DataFrame, sentence_transformer: SentenceTransformer, k=10 ) -> (
         float, float, float):
     ndcg = []
     precision = []
     recall = []
+    for _, row in query_df.iterrows():
+        if row.text is np.nan:
+            continue
+        y_true = helper.produce_ground_truth(int(row.qid), qrel_df, collection)
+        # Predict relevance scores
+        input_data_query = [
+            np.array(sentence_transformer.encode([str(row.text)])),
+            np.array([np.array([0] * 1024)]),
+        ]
+        query_embedding = model.predict(input_data_query)[0]
+        print(query_embedding)
+        topk_df = get_top_n_index(index, query_embedding, collection, k=collection.shape[0])
+        y_pred = helper.produce_y_pred(int(row.qid), topk_df, qrel_df, ascending=True)
+        ndcg.append(normalized_discounted_cumulative_gain(y_pred))
+        precision.append(precision_at_k(y_pred, y_true, k))
+        recall.append(recall_at_k(y_pred, y_true, k))
+
+    return np.mean(ndcg), np.mean(precision), np.mean(recall)
+
+
+def evaluate_hf_encoder(query_df: pd.DataFrame, qrel_df: pd.DataFrame, model, tokenizer, index,
+                        collection: pd.DataFrame, k=10, device='cpu') -> (
+        float, float, float):
+    ndcg = []
+    precision = []
+    recall = []
+
+    def get_embedding(query, model, tokenizer, device='cpu'):
+        model.eval()
+        query_encoding = tokenizer(query, return_tensors='pt', max_length=128, padding='max_length', truncation=True)
+        query_input = {key: val.to(device) for key, val in query_encoding.items()}
+
+        with torch.no_grad():  # Disable gradient calculation
+            output = model(**query_input)
+
+        # Extract the embedding for the [CLS] token (usually first token in transformers)
+        embedding = output.last_hidden_state[:, 0, :]
+
+        embedding = F.normalize(embedding, p=2, dim=1)
+
+        return embedding.cpu().numpy()
 
     for _, row in query_df.iterrows():
         if row.text is np.nan:
             continue
         y_true = helper.produce_ground_truth(int(row.qid), qrel_df, collection)
         # Predict relevance scores
-        query_embedding = model.encode_query(str(row.text), device=device).cpu().detach().numpy()
+        query_embedding = get_embedding(str(row.text), model, tokenizer)
         topk_df = get_top_n_index(index, query_embedding, collection, k=collection.shape[0])
         y_pred = helper.produce_y_pred(int(row.qid), topk_df, qrel_df, ascending=True)
         ndcg.append(normalized_discounted_cumulative_gain(y_pred))

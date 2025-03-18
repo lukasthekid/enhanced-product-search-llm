@@ -1,0 +1,10 @@
+Starting job script at Fri Oct 18 02:14:20 PM CEST 2024
+Running on node(s): a-a100-o-1
+Current directory: /home/e11925939/master/query_generator
+CUDA_VISIBLE_DEVICES: 0,1
+run main
+Generating queries for 392390 products
+Model is on cuda
+Generating 1450042 Queries took 58460.954838991165 seconds
+Job completed at Sat Oct 19 06:29:45 AM CEST 2024
+Elapsed time: 16h 15m 25s

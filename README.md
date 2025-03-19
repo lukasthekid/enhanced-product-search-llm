@@ -105,4 +105,13 @@ We have also included the all-MiniLM model as a baseline. To evaluate neural ret
 
 ![image](/cluster/two_tower/styled_evaluation_metrics_chart%20(1).png)
 
-   
+## License
+
+This master thesis, including all code, documentation, and data, is licensed under
+the [Apache License 2.0](LICENSE).
+
+This license was chosen to:
+- Ensure academic recognition through attribution requirements
+- Provide patent protection for novel methods
+- Allow maximum reusability while requiring attribution
+- Support both academic and potential commercial applications
